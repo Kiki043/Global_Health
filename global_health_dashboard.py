@@ -11,295 +11,133 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 
-# Page configuration
-st.set_page_config(
-    page_title="Global Health Explorer",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Global Health Explorer", page_icon="🌍", layout="wide", initial_sidebar_state="expanded")
 
-# Custom CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono&display=swap');
-    
     .main { background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); }
     .stApp { background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); }
     h1, h2, h3 { font-family: 'DM Sans', sans-serif !important; color: #e8e8e8 !important; }
-    
-    .main-header {
-        font-size: 2.8rem; font-weight: 700;
-        background: linear-gradient(120deg, #E63946, #2A9D8F, #E9C46A);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-    }
+    .main-header { font-size: 2.8rem; font-weight: 700; background: linear-gradient(120deg, #E63946, #2A9D8F, #E9C46A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
     .sub-header { color: #a0a0a0 !important; font-size: 1.1rem; margin-bottom: 2rem; }
-    
-    .metric-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px; padding: 1.5rem; margin: 0.5rem 0;
-        backdrop-filter: blur(10px);
-    }
-    
-    .cluster-badge {
-        display: inline-block; padding: 0.25rem 0.75rem;
-        border-radius: 20px; font-size: 0.8rem; font-weight: 600;
-    }
+    .metric-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; margin: 0.5rem 0; backdrop-filter: blur(10px); }
+    .cluster-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
     .cluster-0 { background: #E63946; color: white; }
     .cluster-1 { background: #2A9D8F; color: white; }
     .cluster-2 { background: #E9C46A; color: #0f0f23; }
     .cluster-3 { background: #6A4C93; color: white; }
-    
     div[data-testid="stMetricValue"] { font-family: 'Space Mono', monospace; }
 </style>
 """, unsafe_allow_html=True)
 
-# ============== LOAD DATA ==============
 @st.cache_data
 def load_data():
-    try:
-        with open('dashboard_data.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        st.error("❌ `dashboard_data.json` not found. Please run the export script in your notebook first.")
-        st.code("""
-# Add this to your notebook after dimensionality reduction:
-# See export_dashboard_data.py for the full code
-        """)
-        st.stop()
+    return json.loads('''
+{"countries": ["Afghanistan", "Albania", "Algeria", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bosnia and Herzegovina", "Botswana", "Brazil", "Bulgaria", "Burkina Faso", "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Congo", "Costa Rica", "Cote d'Ivoire", "Croatia", "Cuba", "Cyprus", "Czechia", "Denmark", "Djibouti", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Mauritania", "Mauritius", "Mexico", "Moldova", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "Norway", "Oman", "Pakistan", "Panama", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Romania", "Russia", "Rwanda", "Samoa", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Sierra Leone", "Slovakia", "Slovenia", "Solomon Islands", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Tajikistan", "Tanzania", "Thailand", "Togo", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"], "clusters": [1, 2, 3, 1, 3, 3, 2, 0, 0, 3, 3, 1, 3, 2, 0, 3, 1, 2, 3, 3, 2, 1, 1, 1, 0, 3, 1, 1, 3, 2, 3, 1, 3, 1, 2, 2, 0, 0, 0, 1, 3, 3, 3, 3, 0, 1, 1, 3, 0, 0, 1, 1, 2, 0, 1, 0, 3, 3, 1, 1, 3, 1, 3, 0, 0, 1, 1, 3, 3, 0, 0, 0, 3, 0, 3, 3, 1, 1, 3, 2, 1, 2, 3, 1, 1, 2, 0, 1, 1, 3, 3, 1, 0, 1, 3, 3, 2, 2, 2, 3, 1, 1, 1, 1, 0, 0, 3, 1, 1, 2, 0, 3, 1, 3, 3, 3, 1, 2, 0, 2, 2, 1, 3, 1, 3, 1, 2, 1, 0, 0, 1, 3, 3, 0, 2, 1, 3, 0, 0, 3, 1, 3, 1, 3, 3, 3, 3, 1, 2, 0, 0, 0, 3, 3, 1, 3, 2, 1, 1, 1], "cluster_labels": {"0": "Developed Nations", "1": "Least Developed", "2": "Emerging Economies", "3": "Developing Nations"}, "embeddings": {"PCA": {"x": [-34.729, 10.851, 6.104, -30.951, 15.277, 17.13, 10.989, 28.227, 30.368, 5.771, 17.94, -21.441, 16.032, 18.05, 29.218, 6.783, -37.188, 10.258, -8.885, 11.356, 14.795, -34.215, -20.934, -33.543, 27.961, -3.972, -47.958, -52.0, 17.179, 0.895, 10.242, -25.021, 16.122, -38.665, 21.016, 16.243, 23.467, 24.311, 30.314, -21.709, 4.552, 8.451, -3.834, 5.922, 24.377, -19.788, -32.169, 0.535, 30.921, 29.689, -12.345, -29.372, 3.119, 29.474, -28.966, 26.777, 11.061, -3.519, -44.436, -39.033, -5.074, -28.049, -0.45, 21.966, 30.22, -22.67, -10.677, 8.946, -0.224, 28.324, 25.279, 29.541, 10.991, 26.09, 9.975, 11.151, -16.812, -15.857, 11.384, 3.215, -24.251, 19.28, 16.177, -33.966, -36.514, 20.962, 33.219, -30.784, -26.517, 10.738, 11.272, -39.857, 23.9, -26.046, 10.94, 10.037, 7.933, -8.887, 15.415, 3.149, -33.026, -20.873, -17.173, -25.2, 28.937, 25.89, -0.242, -46.265, -47.642, -14.83, 31.325, 9.635, -24.088, 9.94, 4.07, 2.29, -12.605, 20.836, 27.499, 14.269, 14.897, -23.678, 2.917, -18.241, 7.409, -22.669, 15.604, -57.769, 20.536, 24.183, -15.13, -5.39, 21.418, 28.266, 2.495, -21.1, 3.927, 30.591, 31.359, -8.13, -28.149, 7.266, -36.248, 10.557, 9.016, 14.245, 3.976, -30.184, 12.844, 16.039, 26.848, 26.736, 18.255, 4.041, -12.819, 8.3, -0.467, -25.575, -26.747, -22.748], "y": [3.178, 19.727, -2.807, -13.387, -10.339, -5.303, 15.184, -11.759, -5.282, 3.668, -12.404, 20.085, -5.985, 14.8, -4.368, -9.143, -7.02, 35.038, -6.607, -5.524, 22.995, -8.646, 10.603, -5.534, -12.637, -3.644, -6.601, -8.401, -2.213, 43.015, -6.98, -9.694, -9.633, -0.074, 11.405, 12.039, -4.47, 2.665, -7.715, -1.578, -6.942, -9.868, 5.783, -7.666, 5.406, -4.853, -7.425, -0.547, -9.856, -9.111, -11.568, -4.764, 32.152, -5.223, -5.455, 9.679, -8.031, -9.169, -5.185, -5.525, 2.617, 5.903, -7.28, 9.014, -12.332, 24.547, 11.328, -2.358, -5.774, -10.083, -7.519, -1.199, -8.117, -3.581, -7.723, 5.474, -14.004, 8.84, -4.619, 7.583, 14.386, 13.204, 0.37, 2.705, -11.814, 8.927, -11.276, -3.354, -12.187, -5.676, -7.009, -4.099, -3.449, -8.309, 0.262, -7.62, 14.057, 16.677, 27.429, -0.53, -13.292, 24.672, -3.34, 23.311, -7.217, -12.101, -4.197, -6.632, -6.506, 68.517, -11.313, -9.433, 7.702, -9.771, -5.261, -3.614, 11.592, 9.121, -3.827, 20.853, 9.297, -12.082, -1.374, 1.17, -4.712, -7.124, 24.351, 1.365, 1.417, 2.831, 0.205, -0.774, 2.833, -6.862, 7.263, -1.183, -2.64, -11.492, -10.223, 3.866, -11.099, 8.926, -3.672, -4.989, 2.486, 5.225, 0.047, -11.938, 18.059, -11.045, -7.803, -10.89, -4.794, 0.321, 1.353, -10.364, 13.802, 1.66, -12.021, -10.567]}, "t-SNE": {"x": [-7.793, 6.015, 1.31, -11.635, 3.039, 4.699, 5.375, 7.58, 8.738, -0.231, 2.916, -5.764, 3.462, 9.943, 8.038, 2.009, -11.303, 6.73, -8.371, 1.491, 8.006, -10.861, -5.954, -10.829, 7.437, -1.384, -12.252, -12.814, 4.054, -3.399, 1.051, -9.614, 0.865, -11.408, 7.511, 9.047, 5.584, 8.14, 8.805, -8.637, 0.76, 0.966, 0.61, -0.513, 10.146, -8.923, -9.816, 0.45, 8.214, 8.138, -9.325, -9.727, 8.022, 8.961, -11.243, 6.85, 2.768, -0.832, -12.761, -11.948, -1.382, -8.52, -0.852, 7.943, 8.106, -6.095, -4.088, 1.963, 0.419, 7.64, 6.533, 8.673, 1.614, 7.883, 1.788, 5.777, -9.472, -5.406, 2.339, -0.999, -5.91, 9.293, 3.78, -9.745, -11.469, 9.44, 9.189, -9.877, -10.432, 0.795, 2.452, -11.177, 5.861, -9.58, 1.114, -0.002, 7.158, -3.656, 7.121, 0.98, -10.962, -4.833, -8.6, -5.779, 8.74, 7.246, -1.594, -12.053, -13.142, -4.37, 8.566, 3.036, -7.868, 0.889, 0.519, -0.09, -4.836, 8.676, 6.874, 7.666, 8.421, -11.58, 2.063, -7.701, 2.564, -9.272, 7.254, -13.878, 7.737, 7.977, -5.96, -8.45, 4.775, 7.367, -0.703, -8.094, 0.325, 8.357, 9.397, -1.088, -10.273, -0.815, -10.712, 1.239, 1.526, 2.541, -0.441, -10.397, 8.77, 2.644, 8.047, 9.557, 4.863, -0.459, -5.828, -0.233, -2.648, -7.949, -9.965, -9.464], "y": [3.334, 2.554, 1.316, 0.352, -1.68, -2.823, 2.575, -3.994, -3.448, 1.824, -2.944, -1.021, -2.008, 1.361, -3.213, -2.812, 2.327, 3.231, -1.84, -3.879, 2.081, 1.708, -0.555, 2.422, -4.113, -2.195, 2.656, 2.837, -3.526, -1.966, -3.994, 2.782, -5.714, 2.753, 0.172, 2.784, -3.116, -0.7, -4.863, 0.473, -4.095, -3.074, 2.396, -3.209, -0.336, -2.08, 4.64, -0.273, -5.13, -3.589, 3.383, 1.54, 3.471, -3.412, 3.919, -1.705, -1.752, -2.795, 1.794, 1.348, -0.148, 1.753, -2.812, -0.341, -5.668, -1.875, -0.089, 1.34, 3.247, -4.949, -3.464, -2.294, -2.409, -2.646, 0.672, 0.534, -0.382, 1.938, 2.828, 1.412, 0.063, 0.547, 0.346, -2.358, 1.226, 0.387, -5.938, 1.002, -0.129, -1.071, -4.811, 1.712, -4.451, 1.752, -0.893, -2.731, 1.496, 1.895, 2.715, 1.601, 0.485, -0.916, -1.727, -1.182, -4.215, -4.228, -3.376, 2.021, 2.289, -2.273, -5.312, 2.755, 1.58, -2.516, -2.355, -2.098, 0.597, 0.091, -2.877, 2.022, 0.931, -1.064, -0.999, 0.339, 2.708, 1.092, 2.523, 2.01, -0.648, -1.28, 1.898, -2.346, -4.362, -3.109, -0.923, 2.2, -1.355, -4.451, -4.557, 2.337, 0.551, -1.142, 2.13, -1.466, 1.433, 1.209, 2.082, 3.22, 1.445, 3.339, -4.115, -3.814, -2.841, 2.072, 2.004, -4.183, -1.302, 2.367, -0.098, -0.34]}, "UMAP": {"x": [10.813, 13.985, 14.599, 10.763, 14.783, 15.233, 13.837, 15.849, 15.663, 14.534, 15.169, 11.963, 14.911, 14.299, 15.408, 14.846, 10.377, 13.795, 12.014, 14.6, 14.247, 10.426, 11.857, 10.962, 15.965, 13.356, 10.143, 10.024, 15.091, 13.151, 14.48, 11.267, 14.279, 10.21, 14.326, 14.514, 15.562, 14.812, 15.823, 11.512, 14.463, 14.254, 14.786, 14.323, 14.709, 11.623, 10.868, 13.638, 15.571, 15.809, 11.463, 10.663, 13.906, 15.547, 10.758, 14.906, 14.816, 14.402, 10.012, 10.181, 13.631, 11.53, 14.076, 14.597, 16.076, 11.924, 12.637, 15.129, 14.752, 16.037, 16.015, 15.429, 14.673, 15.622, 14.856, 14.371, 11.583, 12.421, 14.882, 13.937, 12.154, 14.228, 15.588, 11.567, 10.302, 14.408, 15.872, 11.019, 10.844, 14.295, 14.895, 10.308, 15.615, 10.795, 14.502, 15.06, 13.684, 12.672, 13.965, 14.987, 10.623, 12.213, 11.724, 11.697, 16.056, 15.753, 14.097, 10.145, 9.909, 12.418, 15.959, 15.087, 11.407, 14.508, 13.84, 14.982, 12.184, 14.471, 15.299, 13.838, 14.097, 11.007, 13.05, 11.834, 14.798, 11.207, 14.172, 9.873, 14.786, 14.826, 12.159, 12.271, 15.23, 15.624, 13.647, 11.004, 14.035, 15.879, 16.131, 13.591, 10.83, 13.727, 10.625, 14.05, 15.003, 15.438, 14.257, 10.787, 14.045, 15.442, 15.332, 16.108, 14.968, 14.382, 12.487, 14.29, 13.257, 11.079, 11.097, 11.26], "y": [-4.77, -7.44, -4.771, -3.831, -6.381, -6.596, -6.961, -7.908, -8.348, -4.713, -6.544, -5.322, -6.819, -8.496, -8.133, -5.627, -4.085, -7.741, -4.171, -6.093, -8.155, -4.105, -5.305, -4.19, -8.019, -5.155, -4.171, -4.344, -5.932, -6.526, -6.019, -3.853, -6.119, -4.397, -8.085, -7.59, -7.315, -8.169, -8.593, -4.502, -5.902, -5.966, -4.544, -5.573, -8.408, -4.165, -4.134, -5.173, -8.6, -8.238, -3.749, -4.685, -7.93, -8.456, -4.293, -7.959, -6.269, -5.354, -4.106, -4.206, -5.305, -4.86, -5.614, -8.246, -8.627, -5.115, -5.42, -4.816, -4.928, -8.382, -7.672, -8.187, -5.929, -8.026, -5.166, -7.133, -3.742, -4.683, -5.216, -4.895, -5.145, -8.382, -6.213, -4.059, -3.851, -8.624, -8.704, -4.427, -3.853, -5.229, -5.856, -4.702, -7.477, -4.667, -5.307, -5.512, -8.128, -5.018, -7.879, -4.706, -3.638, -5.408, -4.187, -5.245, -8.186, -7.653, -5.403, -4.446, -4.315, -5.654, -8.67, -5.36, -5.047, -5.591, -5.699, -5.241, -4.91, -7.831, -7.73, -8.283, -8.054, -3.607, -4.844, -4.631, -5.017, -4.599, -7.94, -3.988, -8.538, -7.931, -4.565, -4.052, -7.153, -7.814, -5.631, -4.989, -4.951, -8.307, -8.556, -4.519, -4.016, -6.145, -4.481, -5.955, -4.693, -5.077, -4.601, -3.454, -8.325, -5.627, -8.481, -8.343, -7.091, -4.51, -4.441, -5.787, -5.798, -4.907, -3.89, -4.321]}, "Isomap": {"x": [61.336, -27.785, -14.207, 66.552, -24.445, -25.704, -24.038, -40.724, -55.404, -15.907, -25.509, 32.949, -24.853, -40.114, -52.9, -18.028, 70.125, -35.128, 14.186, -19.804, -47.574, 66.257, 32.355, 68.521, -42.071, 12.875, 77.952, 85.52, -25.157, -13.442, -16.353, 57.428, -22.844, 77.242, -48.802, -27.831, -36.277, -45.494, -55.342, 40.078, -5.251, -11.877, 4.983, -6.425, -68.246, 35.731, 59.664, -6.041, -54.767, -51.829, 25.626, 57.34, -26.701, -55.198, 47.402, -57.026, -19.0, 9.175, 77.629, 70.271, 10.893, 60.055, 8.163, -55.08, -44.881, 42.342, 19.99, -14.326, 10.493, -52.361, -42.967, -58.498, -12.827, -53.529, -15.388, -22.375, 31.486, 32.89, -20.961, -16.387, 37.153, -34.661, -29.69, 58.685, 67.222, -34.596, -60.636, 62.71, 50.788, -10.629, -19.82, 68.003, -39.676, 56.583, -17.565, -5.86, -24.706, 14.987, -34.314, -14.791, 64.516, 31.877, 31.474, 39.039, -52.599, -39.45, -0.115, 74.42, 87.805, 13.32, -55.235, -17.777, 55.51, -8.117, -1.865, -0.792, 23.012, -32.545, -50.717, -39.298, -26.587, 44.271, -1.205, 37.218, -14.584, 41.163, -46.233, 103.881, -46.394, -52.353, 31.79, 16.684, -27.189, -43.815, -5.392, 40.695, 1.142, -51.099, -53.026, 11.956, 55.175, -12.479, 65.84, -14.381, -17.034, -26.931, -11.216, 68.325, -32.782, -32.511, -50.534, -49.595, -27.688, -10.101, 26.809, -15.768, -7.369, 50.156, 50.7, 48.98], "y": [0.992, 32.456, -4.818, -19.696, -19.038, -9.937, 24.925, -18.011, -4.114, 10.054, -23.377, 33.804, -11.285, 21.393, -5.516, -20.201, -3.781, 46.814, -15.243, -13.729, 39.137, -9.0, 22.838, -2.399, -23.564, -7.893, -10.464, -2.838, -14.329, 67.283, -13.903, -19.097, -18.603, 4.45, 20.707, 19.306, -11.341, 13.0, -13.914, -0.478, -15.823, -16.097, 3.677, -14.808, 6.001, -4.005, -28.064, -3.731, -13.737, -12.292, -17.205, -2.022, 47.756, -5.171, -24.301, 7.072, -19.074, -18.192, -3.43, -4.722, 7.507, 16.274, -15.019, 17.491, -25.758, 41.192, 22.308, -7.481, -9.128, -16.298, -27.084, -8.171, -15.258, -9.148, -16.253, 9.85, -16.507, 15.246, -14.462, 20.571, 29.707, 17.894, -16.421, -6.269, -10.359, 13.923, -20.946, 6.709, -23.979, -8.314, -13.989, -0.661, -22.08, -2.393, 1.174, -17.336, 29.53, 32.562, 37.804, -6.179, -12.153, 44.21, -9.469, 33.193, -13.005, -18.83, -12.027, -8.162, -1.529, 96.239, -19.289, -18.078, 19.492, -17.297, -11.264, -5.364, 24.892, 17.868, -5.415, 39.386, 22.189, -17.965, -6.705, 4.45, -12.828, 0.633, 38.694, 8.743, 5.279, 9.686, 8.116, 0.907, 0.313, -12.137, 21.832, 6.152, 2.089, -16.852, -19.107, 6.972, -16.627, 13.16, 1.484, -5.813, 2.327, 5.872, 3.647, -18.778, 29.274, -24.087, -10.635, -19.526, -7.562, 5.231, 6.841, -15.082, 19.73, 2.459, -18.611, -19.834]}, "LLE": {"x": [-0.081, 0.044, 0.024, -0.129, 0.045, 0.062, 0.039, 0.1, 0.105, 0.024, 0.043, -0.048, 0.058, 0.066, 0.1, 0.016, -0.147, 0.041, -0.037, 0.035, 0.059, -0.131, -0.048, -0.136, 0.102, -0.025, -0.154, -0.176, 0.047, 0.015, 0.02, -0.097, 0.043, -0.157, 0.076, 0.046, 0.072, 0.088, 0.121, -0.072, 0.018, 0.03, -0.005, -0.01, 0.087, -0.076, -0.105, 0.011, 0.112, 0.103, -0.069, -0.101, 0.025, 0.11, -0.118, 0.075, 0.04, -0.038, -0.155, -0.132, 0.0, -0.096, -0.03, 0.077, 0.113, -0.066, -0.028, 0.023, 0.008, 0.107, 0.089, 0.089, 0.03, 0.091, 0.03, 0.045, -0.07, -0.047, 0.035, 0.025, -0.046, 0.072, 0.044, -0.104, -0.128, 0.074, 0.121, -0.094, -0.104, 0.029, 0.033, -0.133, 0.072, -0.101, 0.036, 0.001, 0.039, -0.013, 0.059, 0.011, -0.122, -0.038, -0.066, -0.063, 0.106, 0.098, -0.006, -0.152, -0.183, -0.028, 0.119, 0.023, -0.069, 0.033, 0.016, 0.012, -0.041, 0.075, 0.086, 0.06, 0.059, -0.105, 0.002, -0.067, 0.02, -0.075, 0.061, -0.182, 0.074, 0.087, -0.056, -0.057, 0.055, 0.091, 0.021, -0.078, 0.022, 0.11, 0.11, -0.012, -0.103, 0.024, -0.132, 0.036, 0.033, 0.042, 0.022, -0.126, 0.05, 0.046, 0.106, 0.105, 0.063, 0.018, -0.049, 0.015, 0.007, -0.069, -0.096, -0.08], "y": [-0.032, -0.149, -0.053, 0.044, 0.08, 0.074, -0.1, 0.112, 0.071, -0.104, 0.098, -0.063, 0.07, -0.119, 0.062, 0.058, 0.039, -0.213, 0.017, 0.068, -0.189, 0.037, -0.053, 0.041, 0.09, 0.034, 0.043, 0.047, 0.033, -0.187, 0.068, 0.037, 0.048, 0.037, -0.071, -0.083, 0.061, -0.015, 0.144, 0.005, 0.068, 0.062, -0.079, 0.061, -0.03, 0.005, 0.033, -0.033, 0.117, 0.089, 0.025, 0.021, -0.211, 0.067, 0.03, -0.067, 0.061, 0.066, 0.041, 0.032, -0.016, -0.006, 0.066, -0.09, 0.151, -0.086, -0.043, -0.058, -0.037, 0.109, 0.064, -0.002, 0.078, 0.056, -0.023, -0.104, 0.044, -0.021, -0.026, -0.108, -0.047, -0.123, -0.059, 0.007, 0.037, -0.09, 0.146, 0.026, 0.04, -0.012, 0.016, 0.026, 0.045, 0.015, -0.006, 0.064, -0.142, -0.089, -0.209, -0.054, 0.039, -0.069, 0.005, -0.045, 0.108, 0.111, 0.039, 0.038, 0.05, -0.185, 0.15, -0.06, -0.035, 0.057, 0.059, 0.021, -0.041, -0.052, 0.058, -0.169, -0.111, 0.044, 0.035, 0.032, -0.06, 0.021, -0.185, 0.03, -0.028, 0.018, 0.028, -0.0, 0.004, 0.06, -0.037, -0.018, 0.03, 0.119, 0.113, -0.07, 0.031, -0.045, 0.031, 0.036, -0.046, -0.056, -0.103, 0.042, -0.191, -0.007, 0.122, 0.094, 0.067, -0.099, 0.012, 0.057, -0.064, -0.037, 0.033, 0.032]}}, "variance_explained": {"PC1": 33.8, "PC2": 9.7}, "indicators": {"Life Expectancy": [58.06, 75.08, 72.39, 51.39, 74.64, 74.29, 71.92, 80.53, 79.08, 68.67, 72.07, 66.81, 77.44, 70.1, 78.84, 71.15, 57.52, 74.58, 57.95, 71.54, 72.69, 54.09, 62.02, 53.94, 80.05, 69.42, 47.39, 49.61, 77.28, 72.82, 73.85, 57.0, 78.01, 52.56, 75.59, 77.17, 78.69, 75.96, 77.92, 59.54, 70.56, 73.57, 69.03, 69.66, 72.96, 51.78, 56.53, 66.18, 78.76, 80.02, 61.02, 57.43, 71.05, 78.77, 59.49, 79.5, 72.21, 69.12, 54.59, 52.43, 66.55, 58.82, 71.62, 72.96, 80.69, 64.23, 67.27, 71.62, 68.73, 78.46, 80.0, 80.51, 74.07, 81.93, 72.42, 66.78, 57.63, 64.25, 73.75, 67.92, 61.08, 71.26, 75.75, 49.97, 55.09, 72.14, 78.83, 60.15, 51.61, 73.5, 72.02, 51.8, 79.85, 61.81, 72.29, 74.15, 68.69, 64.98, 74.69, 71.19, 51.28, 61.76, 57.14, 64.1, 79.46, 79.32, 70.47, 53.21, 48.97, 68.7, 79.78, 73.4, 63.87, 75.82, 71.49, 72.29, 69.18, 74.81, 78.23, 72.32, 67.78, 51.9, 69.99, 64.12, 72.86, 61.41, 73.24, 44.7, 74.3, 77.44, 68.81, 59.18, 77.88, 80.46, 73.27, 60.4, 69.22, 80.43, 80.85, 64.83, 55.4, 72.71, 56.37, 70.65, 73.68, 71.71, 65.13, 52.14, 69.01, 75.16, 78.82, 77.48, 75.51, 68.52, 68.0, 72.21, 73.6, 62.61, 51.47, 51.25], "GDP per Capita": [438.08, 2656.15, 3157.24, 2264.4, 12047.89, 8588.17, 2105.25, 37417.49, 37691.15, 3024.0, 25684.47, 710.66, 13257.93, 3828.68, 35190.37, 3811.39, 796.2, 3359.7, 5156.12, 6741.73, 4639.02, 488.33, 688.8, 1093.39, 34839.79, 2337.97, 384.86, 541.07, 8948.7, 3505.43, 4290.49, 1866.76, 6349.11, 1162.39, 10560.15, 4543.3, 21869.97, 13256.62, 46033.7, 1393.56, 4257.48, 3628.25, 1447.68, 2556.47, 11835.77, 2772.06, 323.7, 3617.28, 37032.9, 32910.73, 6610.98, 669.12, 2332.22, 35365.8, 992.03, 18585.58, 6314.31, 2480.18, 576.05, 445.26, 2901.24, 863.98, 1539.77, 9895.26, 43831.07, 940.05, 1980.76, 3787.0, 5047.07, 42634.59, 25712.2, 28816.69, 3927.5, 37598.47, 2662.9, 5528.19, 778.54, 1175.73, 29741.33, 7173.99, 962.55, 9827.76, 5409.62, 788.49, 503.02, 10034.8, 79290.07, 397.22, 296.69, 6706.65, 4965.13, 533.3, 17075.67, 1191.34, 6299.44, 7726.29, 1864.02, 1912.5, 5711.76, 2168.17, 414.5, 781.5, 3621.21, 452.41, 39459.75, 26979.35, 1281.44, 376.98, 1422.99, 9038.99, 61787.59, 12560.13, 834.21, 7262.43, 3190.26, 3768.03, 1769.95, 8577.17, 17008.36, 5630.71, 6925.18, 456.45, 2608.7, 1228.88, 14642.14, 1031.7, 4659.06, 347.14, 11382.12, 17239.62, 1456.9, 4875.89, 18955.39, 23115.1, 1922.79, 823.8, 4531.5, 42693.76, 59935.01, 522.2, 574.76, 3865.11, 456.18, 11671.84, 3026.34, 7100.79, 2995.94, 478.73, 2040.2, 35071.23, 35124.38, 43022.93, 9311.08, 1135.67, 2155.94, 6691.63, 1024.64, 842.8, 917.62, 862.1], "Infant Mortality": [79.57, 19.35, 29.6, 97.5, 10.31, 15.87, 23.34, 4.75, 4.47, 48.21, 14.23, 55.26, 13.78, 7.38, 4.66, 18.93, 79.92, 8.51, 30.53, 26.63, 11.35, 79.55, 57.09, 75.46, 5.24, 28.32, 103.73, 92.31, 8.97, 23.12, 19.16, 54.55, 10.28, 78.71, 6.41, 6.33, 4.92, 4.58, 4.47, 71.25, 32.03, 22.34, 33.89, 24.11, 6.96, 56.81, 73.72, 20.55, 3.23, 4.41, 47.42, 55.46, 23.6, 4.27, 56.23, 5.15, 13.9, 36.54, 91.96, 90.17, 34.42, 70.42, 26.76, 7.58, 2.89, 57.35, 36.8, 24.41, 32.11, 4.78, 5.14, 4.54, 17.69, 2.99, 20.53, 27.85, 50.44, 52.36, 10.1, 35.58, 66.5, 9.38, 14.05, 72.79, 108.5, 7.62, 3.66, 60.86, 78.23, 8.71, 26.26, 90.03, 6.88, 64.17, 15.42, 21.44, 20.6, 40.42, 8.98, 36.62, 98.92, 57.91, 40.54, 52.83, 4.63, 5.87, 28.17, 83.73, 99.12, 31.61, 3.58, 14.5, 79.11, 19.42, 25.44, 26.3, 27.94, 7.81, 5.07, 15.07, 12.64, 72.22, 17.5, 45.95, 16.35, 54.34, 10.52, 123.0, 7.54, 4.09, 23.87, 39.54, 5.87, 4.17, 12.52, 45.21, 25.21, 3.25, 4.54, 55.48, 54.1, 16.46, 73.03, 31.64, 9.23, 17.65, 11.05, 65.48, 13.29, 19.88, 17.88, 32.52, 20.52, 22.99, 28.34, 19.4, 20.07, 76.13, 81.45, 67.84]}, "cluster_averages": {"0": {"Life Expectancy": 78.63, "GDP per Capita": 33115.72, "Infant Mortality": 6.52}, "1": {"Life Expectancy": 57.4, "GDP per Capita": 1075.69, "Infant Mortality": 68.39}, "2": {"Life Expectancy": 71.89, "GDP per Capita": 4951.02, "Infant Mortality": 16.33}, "3": {"Life Expectancy": 71.34, "GDP per Capita": 6341.58, "Infant Mortality": 22.59}}}''')
 
 data = load_data()
 
-# Create DataFrame
-df = pd.DataFrame({
-    'Country': data['countries'],
-    'Cluster': data['clusters'],
-    'Cluster_Name': [data['cluster_labels'][str(c)] for c in data['clusters']]
-})
+df = pd.DataFrame({'Country': data['countries'], 'Cluster': data['clusters'], 
+    'Cluster_Name': [data['cluster_labels'][str(c)] for c in data['clusters']]})
+for m in data['embeddings']:
+    df[f'{m}_x'] = data['embeddings'][m]['x']
+    df[f'{m}_y'] = data['embeddings'][m]['y']
+for ind, vals in data.get('indicators', {}).items():
+    df[ind] = vals
 
-# Add embeddings
-for method in data['embeddings']:
-    df[f'{method}_x'] = data['embeddings'][method]['x']
-    df[f'{method}_y'] = data['embeddings'][method]['y']
+cluster_colors = {0: '#E63946', 1: '#2A9D8F', 2: '#E9C46A', 3: '#6A4C93'}
+cluster_color_map = {'Developed Nations': '#E63946', 'Least Developed': '#2A9D8F', 'Emerging Economies': '#E9C46A', 'Developing Nations': '#6A4C93'}
 
-# Add indicators
-for indicator, values in data.get('indicators', {}).items():
-    df[indicator] = values
-
-# Cluster colors matching notebook
-cluster_colors = {
-    0: '#E63946',  # Developed - Red
-    1: '#2A9D8F',  # Least Developed - Teal  
-    2: '#E9C46A',  # Emerging - Yellow
-    3: '#6A4C93'   # Developing - Purple
-}
-
-cluster_color_map = {
-    'Developed Nations': '#E63946',
-    'Least Developed': '#2A9D8F',
-    'Emerging Economies': '#E9C46A',
-    'Developing Nations': '#6A4C93'
-}
-
-# ============== SIDEBAR ==============
 with st.sidebar:
     st.markdown("## 🎛️ Controls")
-    
-    # Get available methods
     methods = list(data['embeddings'].keys())
     method = st.radio("**Projection Method**", methods)
-    
     st.markdown("---")
-    
-    # Color options
     color_options = ["Cluster"] + list(data.get('indicators', {}).keys())
     color_by = st.selectbox("**Color By**", color_options)
-    
     st.markdown("---")
-    
     selected_country = st.selectbox("**🔍 Find Country**", [""] + sorted(data['countries']))
-    
     st.markdown("---")
     st.markdown("**Filter Clusters**")
-    show_clusters = {int(i): st.checkbox(name, value=True, key=f"c{i}") 
-                     for i, name in data['cluster_labels'].items()}
-    
+    show_clusters = {int(i): st.checkbox(name, value=True, key=f"c{i}") for i, name in data['cluster_labels'].items()}
     st.markdown("---")
-    st.markdown(f"""
-    <div style='font-size: 0.8rem; color: #888;'>
-    <b>Countries:</b> {len(data['countries'])}<br>
-    <b>Methods:</b> {', '.join(methods)}<br>
-    <b>Data:</b> WHO, World Bank, UN
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style=\'font-size: 0.8rem; color: #888;\'><b>Countries:</b> 160<br><b>Features:</b> 1,640<br><b>Data:</b> WHO, World Bank, UN</div>", unsafe_allow_html=True)
 
-# ============== MAIN CONTENT ==============
 st.markdown('<h1 class="main-header">🌍 Global Health Explorer</h1>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-header">Dimensionality Reduction Analysis • {len(data["countries"])} Countries • 1990-2019</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Dimensionality Reduction Analysis • 160 Countries • 1990-2019</p>', unsafe_allow_html=True)
 
-# Filter data
 mask = df['Cluster'].isin([c for c, show in show_clusters.items() if show])
 df_filtered = df[mask].copy()
 
-# Main layout
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.markdown(f"### {method} Projection")
-    
     x_col, y_col = f'{method}_x', f'{method}_y'
     
     if color_by == "Cluster":
-        fig = px.scatter(
-            df_filtered, x=x_col, y=y_col, 
-            color='Cluster_Name',
-            color_discrete_map=cluster_color_map,
-            hover_name='Country',
-            hover_data={x_col: False, y_col: False}
-        )
+        fig = px.scatter(df_filtered, x=x_col, y=y_col, color='Cluster_Name', color_discrete_map=cluster_color_map, hover_name='Country', hover_data={x_col: False, y_col: False})
     else:
-        fig = px.scatter(
-            df_filtered, x=x_col, y=y_col,
-            color=color_by,
-            color_continuous_scale='RdYlGn',
-            hover_name='Country',
-            hover_data={x_col: False, y_col: False}
-        )
+        fig = px.scatter(df_filtered, x=x_col, y=y_col, color=color_by, color_continuous_scale='RdYlGn_r' if 'Mortality' in color_by else 'RdYlGn', hover_name='Country', hover_data={x_col: False, y_col: False})
     
-    # Highlight selected country
     if selected_country:
         cd = df[df['Country'] == selected_country]
         if len(cd) > 0:
-            fig.add_trace(go.Scatter(
-                x=cd[x_col], y=cd[y_col],
-                mode='markers+text',
-                marker=dict(size=20, color='white', line=dict(width=3, color='#ff6b6b')),
-                text=[selected_country],
-                textposition='top center',
-                textfont=dict(size=14, color='white'),
-                showlegend=False
-            ))
+            fig.add_trace(go.Scatter(x=cd[x_col], y=cd[y_col], mode='markers+text', marker=dict(size=20, color='white', line=dict(width=3, color='#ff6b6b')), text=[selected_country], textposition='top center', textfont=dict(size=14, color='white'), showlegend=False))
     
-    # Styling
     fig.update_traces(marker=dict(size=10, line=dict(width=1, color='rgba(0,0,0,0.3)')))
-    
-    # Axis labels
-    x_label = f"{method} Dim 1"
-    y_label = f"{method} Dim 2"
-    if method == 'PCA' and 'variance_explained' in data:
+    x_label, y_label = f"{method} Dim 1", f"{method} Dim 2"
+    if method == 'PCA':
         x_label += f" ({data['variance_explained']['PC1']}%)"
         y_label += f" ({data['variance_explained']['PC2']}%)"
-    
-    fig.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e8e8e8'),
-        xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.2)'),
-        yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.2)'),
-        legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'),
-        height=550,
-        margin=dict(l=60, r=20, t=40, b=60)
-    )
-    
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8'), xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)'), yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)'), legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'), height=550, margin=dict(l=60, r=20, t=40, b=60))
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
     st.markdown("### Cluster Profiles")
-    
     for cid in range(4):
         if show_clusters.get(cid, True):
             name = data['cluster_labels'][str(cid)]
             count = sum(1 for c in data['clusters'] if c == cid)
             color = cluster_colors[cid]
-            
-            avg_data = data.get('cluster_averages', {}).get(str(cid), {})
-            
-            st.markdown(f"""
-            <div class="metric-card">
-                <span class="cluster-badge cluster-{cid}">{name}</span>
-                <span style="color:#888;float:right;">{count} countries</span>
-                <div style="margin-top:0.5rem;font-size:0.9rem;">
-            """, unsafe_allow_html=True)
-            
-            for ind_name, ind_val in avg_data.items():
-                if ind_val is not None:
-                    if 'GDP' in ind_name:
-                        display = f"${ind_val:,.0f}"
-                    else:
-                        display = f"{ind_val:.1f}"
-                    st.markdown(f"""<span style="color:#888;">{ind_name}:</span> <span style="color:{color}">{display}</span><br>""", unsafe_allow_html=True)
-            
-            st.markdown("</div></div>", unsafe_allow_html=True)
+            avg = data.get('cluster_averages', {}).get(str(cid), {})
+            html = f"<div class=\'metric-card\'><span class=\'cluster-badge cluster-{cid}\'>{name}</span><span style=\'color:#888;float:right;\'>{count} countries</span><div style=\'margin-top:0.5rem;font-size:0.9rem;\'>"
+            for ind, val in avg.items():
+                if val:
+                    disp = f"${val:,.0f}" if 'GDP' in ind else f"{val:.1f}"
+                    html += f"<span style=\'color:#888;\'>{ind}:</span> <span style=\'color:{color}\'>{disp}</span><br>"
+            html += "</div></div>"
+            st.markdown(html, unsafe_allow_html=True)
 
-# Country detail
 if selected_country:
     st.markdown("---")
     st.markdown(f"### 📍 {selected_country}")
-    
     idx = data['countries'].index(selected_country)
     cid = data['clusters'][idx]
-    
-    cols = st.columns(3)
+    cols = st.columns(4)
     cols[0].metric("Cluster", data['cluster_labels'][str(cid)])
-    
     i = 1
-    for ind_name, ind_values in data.get('indicators', {}).items():
-        if i < len(cols):
-            val = ind_values[idx]
-            if val is not None:
-                if 'GDP' in ind_name:
-                    cols[i].metric(ind_name, f"${val:,.0f}")
-                else:
-                    cols[i].metric(ind_name, f"{val:.1f}")
+    for ind, vals in data.get('indicators', {}).items():
+        if i < 4:
+            v = vals[idx]
+            if v:
+                cols[i].metric(ind, f"${v:,.0f}" if 'GDP' in ind else f"{v:.1f}")
             else:
-                cols[i].metric(ind_name, "N/A")
+                cols[i].metric(ind, "N/A")
             i += 1
 
-# Method comparison
 st.markdown("---")
 st.markdown("### 🔬 Method Comparison")
-
-method_cols = st.columns(len(methods))
-descriptions = {
-    'PCA': 'Linear, global variance',
-    't-SNE': 'Non-linear, local focus',
-    'UMAP': 'Local & global balance',
-    'Isomap': 'Geodesic distances',
-    'LLE': 'Local reconstruction'
-}
-
-for col, m in zip(method_cols, methods):
+mcols = st.columns(5)
+descs = {'PCA': 'Linear, global', 't-SNE': 'Local structure', 'UMAP': 'Local+global', 'Isomap': 'Geodesic', 'LLE': 'Local linear'}
+for col, m in zip(mcols, data['embeddings'].keys()):
     with col:
-        x_c, y_c = f'{m}_x', f'{m}_y'
-        
-        fig_small = px.scatter(
-            df_filtered, x=x_c, y=y_c,
-            color='Cluster',
-            color_discrete_sequence=['#E63946', '#2A9D8F', '#E9C46A', '#6A4C93'],
-            hover_name='Country',
-            title=m
-        )
-        fig_small.update_traces(marker=dict(size=6))
-        fig_small.update_layout(
-            showlegend=False,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#e8e8e8', size=10),
-            xaxis=dict(showticklabels=False, title='', gridcolor='rgba(255,255,255,0.05)'),
-            yaxis=dict(showticklabels=False, title='', gridcolor='rgba(255,255,255,0.05)'),
-            height=200,
-            margin=dict(l=10, r=10, t=30, b=10)
-        )
-        st.plotly_chart(fig_small, use_container_width=True)
-        st.caption(descriptions.get(m, ''))
+        fig_s = px.scatter(df_filtered, x=f'{m}_x', y=f'{m}_y', color='Cluster', color_discrete_sequence=['#E63946', '#2A9D8F', '#E9C46A', '#6A4C93'], hover_name='Country', title=m)
+        fig_s.update_traces(marker=dict(size=5))
+        fig_s.update_layout(showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8', size=9), xaxis=dict(showticklabels=False, title=''), yaxis=dict(showticklabels=False, title=''), height=180, margin=dict(l=5, r=5, t=25, b=5))
+        st.plotly_chart(fig_s, use_container_width=True)
+        st.caption(descs.get(m, ''))
 
-# Footer
 st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666; font-size: 0.85rem;'>
-    <b>Assessment 3</b> • Data Analytics and Visualisation (RAI-7002) • 2024<br>
-    Analysis using PCA, t-SNE, UMAP, Isomap, and LLE
-</div>
-""", unsafe_allow_html=True)
+st.caption("Assessment 3 • Data Analytics & Visualisation (RAI-7002) • Data: WHO, World Bank, UN (1990-2019)")
