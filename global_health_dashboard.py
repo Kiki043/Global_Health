@@ -36,8 +36,14 @@ def load_data():
 
 data = load_data()
 
-df = pd.DataFrame({'Country': data['countries'], 'Cluster': data['clusters'], 
-    'Cluster_Name': [data['cluster_labels'][str(c)] for c in data['clusters']]})
+# Create DataFrame
+df = pd.DataFrame({
+    'Country': data['countries'],
+    'Cluster': data['clusters'],
+    'Cluster_Name': [data['cluster_labels'][str(c)] for c in data['clusters']],
+    'PC1_Score': data['embeddings']['PCA']['x']  # PC1 scores for gradient coloring
+})
+
 for m in data['embeddings']:
     df[f'{m}_x'] = data['embeddings'][m]['x']
     df[f'{m}_y'] = data['embeddings'][m]['y']
@@ -49,6 +55,11 @@ with st.sidebar:
     st.markdown("## 🎛️ Controls")
     methods = list(data['embeddings'].keys())
     method = st.radio("**Projection Method**", methods)
+    st.markdown("---")
+    
+    # Color options - now includes PC1 Score
+    color_by = st.radio("**Color By**", ["Cluster (Discrete)", "PC1 Score (Continuous)"])
+    
     st.markdown("---")
     selected_country = st.selectbox("**🔍 Find Country**", [""] + sorted(data['countries']))
     st.markdown("---")
@@ -69,19 +80,45 @@ with col1:
     st.markdown(f"### {method} Projection")
     x_col, y_col = f'{method}_x', f'{method}_y'
     
-    fig = px.scatter(df_filtered, x=x_col, y=y_col, color='Cluster_Name', color_discrete_map=cluster_color_map, hover_name='Country', hover_data={x_col: False, y_col: False})
+    if color_by == "Cluster (Discrete)":
+        fig = px.scatter(df_filtered, x=x_col, y=y_col, color='Cluster_Name', 
+            color_discrete_map=cluster_color_map, hover_name='Country', 
+            hover_data={x_col: False, y_col: False, 'PC1_Score': ':.2f'})
+    else:
+        # PC1 Score with viridis colormap (matching notebook)
+        fig = px.scatter(df_filtered, x=x_col, y=y_col, color='PC1_Score',
+            color_continuous_scale='viridis', hover_name='Country',
+            hover_data={x_col: False, y_col: False, 'PC1_Score': ':.2f'},
+            labels={'PC1_Score': 'PC1 Score (Development Level)'})
     
     if selected_country:
         cd = df[df['Country'] == selected_country]
         if len(cd) > 0:
-            fig.add_trace(go.Scatter(x=cd[x_col], y=cd[y_col], mode='markers+text', marker=dict(size=20, color='white', line=dict(width=3, color='#ff6b6b')), text=[selected_country], textposition='top center', textfont=dict(size=14, color='white'), showlegend=False))
+            fig.add_trace(go.Scatter(x=cd[x_col], y=cd[y_col], mode='markers+text', 
+                marker=dict(size=20, color='white', line=dict(width=3, color='#ff6b6b')), 
+                text=[selected_country], textposition='top center', 
+                textfont=dict(size=14, color='white'), showlegend=False))
     
     fig.update_traces(marker=dict(size=10, line=dict(width=1, color='rgba(0,0,0,0.3)')))
     x_label, y_label = f"{method} Dim 1", f"{method} Dim 2"
     if method == 'PCA':
         x_label += f" ({data['variance_explained']['PC1']}%)"
         y_label += f" ({data['variance_explained']['PC2']}%)"
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8'), xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)'), yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)'), legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'), height=550, margin=dict(l=60, r=20, t=40, b=60))
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
+        font=dict(color='#e8e8e8'), 
+        xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)'), 
+        yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)'), 
+        legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'), 
+        height=550, margin=dict(l=60, r=20, t=40, b=60))
+    
+    # Add colorbar title for continuous scale
+    if color_by == "PC1 Score (Continuous)":
+        fig.update_layout(coloraxis_colorbar=dict(
+            title="PC1 Score<br>(Development)",
+            tickvals=[-30, -15, 0, 15, 30],
+            ticktext=["Less Dev.", "", "Mid", "", "More Dev."]
+        ))
+    
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
@@ -91,14 +128,23 @@ with col2:
             name = data['cluster_labels'][str(cid)]
             count = sum(1 for c in data['clusters'] if c == cid)
             color = cluster_colors[cid]
-            st.markdown(f"<div class='metric-card'><span class='cluster-badge cluster-{cid}'>{name}</span><span style='color:#888;float:right;'>{count} countries</span></div>", unsafe_allow_html=True)
+            
+            # Calculate average PC1 for this cluster
+            cluster_pc1 = [df['PC1_Score'].iloc[i] for i, c in enumerate(data['clusters']) if c == cid]
+            avg_pc1 = sum(cluster_pc1) / len(cluster_pc1) if cluster_pc1 else 0
+            
+            st.markdown(f"<div class='metric-card'><span class='cluster-badge cluster-{cid}'>{name}</span><span style='color:#888;float:right;'>{count} countries</span><div style='margin-top:0.5rem;font-size:0.9rem;'><span style='color:#888;'>Avg PC1:</span> <span style='color:{color}'>{avg_pc1:.1f}</span></div></div>", unsafe_allow_html=True)
 
 if selected_country:
     st.markdown("---")
     st.markdown(f"### 📍 {selected_country}")
     idx = data['countries'].index(selected_country)
     cid = data['clusters'][idx]
-    st.metric("Cluster", data['cluster_labels'][str(cid)])
+    pc1 = data['embeddings']['PCA']['x'][idx]
+    cols = st.columns(3)
+    cols[0].metric("Cluster", data['cluster_labels'][str(cid)])
+    cols[1].metric("PC1 Score", f"{pc1:.2f}")
+    cols[2].metric("Development", "High" if pc1 > 10 else "Medium" if pc1 > -10 else "Low")
 
 st.markdown("---")
 st.markdown("### 🔬 Method Comparison")
@@ -106,9 +152,21 @@ mcols = st.columns(5)
 descs = {'PCA': 'Linear, global', 't-SNE': 'Local structure', 'UMAP': 'Local+global', 'Isomap': 'Geodesic', 'LLE': 'Local linear'}
 for col, m in zip(mcols, data['embeddings'].keys()):
     with col:
-        fig_s = px.scatter(df_filtered, x=f'{m}_x', y=f'{m}_y', color='Cluster', color_discrete_sequence=['#E63946', '#2A9D8F', '#E9C46A', '#6A4C93'], hover_name='Country', title=m)
+        # Use PC1 coloring for comparison plots too
+        if color_by == "PC1 Score (Continuous)":
+            fig_s = px.scatter(df_filtered, x=f'{m}_x', y=f'{m}_y', color='PC1_Score',
+                color_continuous_scale='viridis', hover_name='Country', title=m)
+        else:
+            fig_s = px.scatter(df_filtered, x=f'{m}_x', y=f'{m}_y', color='Cluster',
+                color_discrete_sequence=['#E63946', '#2A9D8F', '#E9C46A', '#6A4C93'], 
+                hover_name='Country', title=m)
         fig_s.update_traces(marker=dict(size=5))
-        fig_s.update_layout(showlegend=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8', size=9), xaxis=dict(showticklabels=False, title=''), yaxis=dict(showticklabels=False, title=''), height=180, margin=dict(l=5, r=5, t=25, b=5))
+        fig_s.update_layout(showlegend=False, plot_bgcolor='rgba(0,0,0,0)', 
+            paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8', size=9), 
+            xaxis=dict(showticklabels=False, title=''), 
+            yaxis=dict(showticklabels=False, title=''), 
+            coloraxis_showscale=False,
+            height=180, margin=dict(l=5, r=5, t=25, b=5))
         st.plotly_chart(fig_s, use_container_width=True)
         st.caption(descs.get(m, ''))
 
