@@ -36,7 +36,6 @@ def load_data():
 
 data = load_data()
 
-# Create DataFrame
 df = pd.DataFrame({
     'Country': data['countries'],
     'Cluster': data['clusters'],
@@ -100,12 +99,18 @@ with col1:
     if method == 'PCA':
         x_label += f" ({data['variance_explained']['PC1']}%)"
         y_label += f" ({data['variance_explained']['PC2']}%)"
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
+    
+    # FIXED: Force equal aspect ratio to match notebook shape
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)', 
+        paper_bgcolor='rgba(0,0,0,0)', 
         font=dict(color='#e8e8e8'), 
-        xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)'), 
-        yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)'), 
+        xaxis=dict(title=x_label, gridcolor='rgba(255,255,255,0.1)', constrain='domain'), 
+        yaxis=dict(title=y_label, gridcolor='rgba(255,255,255,0.1)', scaleanchor='x', scaleratio=1), 
         legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'), 
-        height=550, margin=dict(l=60, r=20, t=40, b=60))
+        height=600, 
+        margin=dict(l=60, r=20, t=40, b=60)
+    )
     
     if color_by == "PC1 Score (Continuous)":
         fig.update_layout(coloraxis_colorbar=dict(
@@ -154,10 +159,10 @@ for col, m in zip(mcols, data['embeddings'].keys()):
         fig_s.update_traces(marker=dict(size=5))
         fig_s.update_layout(showlegend=False, plot_bgcolor='rgba(0,0,0,0)', 
             paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e8e8e8', size=9), 
-            xaxis=dict(showticklabels=False, title=''), 
-            yaxis=dict(showticklabels=False, title=''), 
+            xaxis=dict(showticklabels=False, title='', constrain='domain'), 
+            yaxis=dict(showticklabels=False, title='', scaleanchor='x', scaleratio=1), 
             coloraxis_showscale=False,
-            height=180, margin=dict(l=5, r=5, t=25, b=5))
+            height=200, margin=dict(l=5, r=5, t=25, b=5))
         st.plotly_chart(fig_s, use_container_width=True)
         st.caption(descs.get(m, ''))
 
