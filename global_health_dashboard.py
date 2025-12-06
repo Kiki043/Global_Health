@@ -41,7 +41,7 @@ df = pd.DataFrame({
     'Country': data['countries'],
     'Cluster': data['clusters'],
     'Cluster_Name': [data['cluster_labels'][str(c)] for c in data['clusters']],
-    'PC1_Score': data['embeddings']['PCA']['x']  # PC1 scores for gradient coloring
+    'PC1_Score': data['embeddings']['PCA']['x']
 })
 
 for m in data['embeddings']:
@@ -56,10 +56,7 @@ with st.sidebar:
     methods = list(data['embeddings'].keys())
     method = st.radio("**Projection Method**", methods)
     st.markdown("---")
-    
-    # Color options - now includes PC1 Score
     color_by = st.radio("**Color By**", ["Cluster (Discrete)", "PC1 Score (Continuous)"])
-    
     st.markdown("---")
     selected_country = st.selectbox("**🔍 Find Country**", [""] + sorted(data['countries']))
     st.markdown("---")
@@ -85,7 +82,6 @@ with col1:
             color_discrete_map=cluster_color_map, hover_name='Country', 
             hover_data={x_col: False, y_col: False, 'PC1_Score': ':.2f'})
     else:
-        # PC1 Score with viridis colormap (matching notebook)
         fig = px.scatter(df_filtered, x=x_col, y=y_col, color='PC1_Score',
             color_continuous_scale='viridis', hover_name='Country',
             hover_data={x_col: False, y_col: False, 'PC1_Score': ':.2f'},
@@ -111,7 +107,6 @@ with col1:
         legend=dict(bgcolor='rgba(0,0,0,0.5)', bordercolor='rgba(255,255,255,0.2)'), 
         height=550, margin=dict(l=60, r=20, t=40, b=60))
     
-    # Add colorbar title for continuous scale
     if color_by == "PC1 Score (Continuous)":
         fig.update_layout(coloraxis_colorbar=dict(
             title="PC1 Score<br>(Development)",
@@ -128,11 +123,8 @@ with col2:
             name = data['cluster_labels'][str(cid)]
             count = sum(1 for c in data['clusters'] if c == cid)
             color = cluster_colors[cid]
-            
-            # Calculate average PC1 for this cluster
             cluster_pc1 = [df['PC1_Score'].iloc[i] for i, c in enumerate(data['clusters']) if c == cid]
             avg_pc1 = sum(cluster_pc1) / len(cluster_pc1) if cluster_pc1 else 0
-            
             st.markdown(f"<div class='metric-card'><span class='cluster-badge cluster-{cid}'>{name}</span><span style='color:#888;float:right;'>{count} countries</span><div style='margin-top:0.5rem;font-size:0.9rem;'><span style='color:#888;'>Avg PC1:</span> <span style='color:{color}'>{avg_pc1:.1f}</span></div></div>", unsafe_allow_html=True)
 
 if selected_country:
@@ -152,7 +144,6 @@ mcols = st.columns(5)
 descs = {'PCA': 'Linear, global', 't-SNE': 'Local structure', 'UMAP': 'Local+global', 'Isomap': 'Geodesic', 'LLE': 'Local linear'}
 for col, m in zip(mcols, data['embeddings'].keys()):
     with col:
-        # Use PC1 coloring for comparison plots too
         if color_by == "PC1 Score (Continuous)":
             fig_s = px.scatter(df_filtered, x=f'{m}_x', y=f'{m}_y', color='PC1_Score',
                 color_continuous_scale='viridis', hover_name='Country', title=m)
